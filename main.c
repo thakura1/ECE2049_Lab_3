@@ -342,6 +342,203 @@ uint8_t getState(void){
         return result;
 }
 
+void displayTime(long unsigned int inTime)
+{
+    //int daysInMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+    char time[14];
+    char date[13];
+
+    int days = ((inTime / 86400)%365); //86400 sec in a day
+    int hours = ((inTime - (86400*days)) / 3600); //3600 sec in an hour
+    int minutes = ((inTime - (86400*days) - (3600*hours)) / 60); //60 sec in a min
+    int seconds = (inTime - (86400*days) - (3600*hours) - (60*minutes)); //remainder
+
+
+    date[0] = 'D';
+    date[1] = 'A';
+    date[2] = 'T';
+    date[3] = 'E';
+    date[4] = '=';
+    date[5] = '>';
+
+    if(days <= 31)
+    {
+        date[6] = 'J';
+        date[7] = 'A';
+        date[8] = 'N';
+        date[9] = ' ';
+        date[10] = (days/10)+48;
+        date[11] = (days%10)+48;
+    }
+    else if ((days > 31)&&(days <= 59))
+    {
+        date[6] = 'F';
+        date[7] = 'E';
+        date[8] = 'B';
+        date[9] = ' ';
+        date[10] = ((days-31)/10)+48;
+        date[11] = ((days-31)%10)+48;
+    }
+    else if ((days > 59)&&(days <= 90))
+    {
+        date[6] = 'M';
+        date[7] = 'A';
+        date[8] = 'R';
+        date[9] = ' ';
+        date[10] = ((days-59)/10)+48;
+        date[11] = ((days-59)%10)+48;
+    }
+    else if ((days > 90)&&(days <= 120))
+    {
+        date[6] = 'A';
+        date[7] = 'P';
+        date[8] = 'R';
+        date[9] = ' ';
+        date[10] = ((days-90)/10)+48;
+        date[11] = ((days-90)%10)+48;
+    }
+    else if ((days > 120)&&(days <= 151))
+    {
+        date[6] = 'M';
+        date[7] = 'A';
+        date[8] = 'Y';
+        date[9] = ' ';
+        date[10] = ((days-120)/10)+48;
+        date[11] = ((days-120)%10)+48;
+    }
+    else if ((days > 151)&&(days <= 181))
+    {
+        date[6] = 'J';
+        date[7] = 'U';
+        date[8] = 'N';
+        date[9] = ' ';
+        date[10] = ((days-151)/10)+48;
+        date[11] = ((days-151)%10)+48;
+    }
+    else if ((days > 181)&&(days <= 212))
+    {
+        date[6] = 'J';
+        date[7] = 'U';
+        date[8] = 'L';
+        date[9] = ' ';
+        date[10] = ((days-181)/10)+48;
+        date[11] = ((days-181)%10)+48;
+    }
+    else if ((days > 212)&&(days <= 243))
+    {
+        date[6] = 'A';
+        date[7] = 'U';
+        date[8] = 'G';
+        date[9] = ' ';
+        date[10] = ((days-212)/10)+48;
+        date[11] = ((days-212)%10)+48;
+    }
+    else if ((days > 243)&&(days <= 273))
+    {
+        date[6] = 'S';
+        date[7] = 'E';
+        date[8] = 'P';
+        date[9] = ' ';
+        date[10] = ((days-243)/10)+48;
+        date[11] = ((days-243)%10)+48;
+    }
+    else if ((days > 273)&&(days <= 304))
+    {
+        date[6] = 'O';
+        date[7] = 'C';
+        date[8] = 'T';
+        date[9] = ' ';
+        date[10] = ((days-273)/10)+48;
+        date[11] = ((days-273)%10)+48;
+    }
+    else if ((days > 304)&&(days <= 334))
+    {
+        date[6] = 'N';
+        date[7] = 'O';
+        date[8] = 'V';
+        date[9] = ' ';
+        date[10] = ((days-304)/10)+48;
+        date[11] = ((days-304)%10)+48;
+    }
+    else if ((days > 334)&&(days <= 365))
+    {
+        date[6] = 'D';
+        date[7] = 'E';
+        date[8] = 'C';
+        date[9] = ' ';
+        date[10] = ((days-334)/10)+48;
+        date[11] = ((days-334)%10)+48;
+    }
+
+    time[0] = 'T';
+    time[1] = 'i';
+    time[2] = 'm';
+    time[3] = 'e';
+    time[4] = '=';
+    time[5] = '>';
+    time[6] = ((hours/10) + 48);
+    time[7] = ((hours%10) + 48);
+    time[8] = ':';
+    time[9] = ((minutes/10) + 48);
+    time[10] = ((minutes%10) + 48);
+    time[11] = ':';
+    time[12] = ((seconds/10) + 48);
+    time[13] = ((seconds%10) + 48);
+
+    Graphics_drawStringCentered(&g_sContext, time, AUTO_STRING_LENGTH, 48, 15, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, date, AUTO_STRING_LENGTH, 48, 20, TRANSPARENT_TEXT);
+}
+
+void displayTemp(float inAvgTempC)
+{
+    char tempC[14];
+    char tempF[14];
+
+    //multiplied by 10
+    float tempCf = (floor (inAvgTempC* 10));
+    int tempCtens = (tempCf/100);
+    int tempCones = ((tempCf - tempCtens)/10);
+    int tempCtenths = (tempCf - tempCtens - tempCones);
+
+    float tempFf = (floor ((inAvgTempC * (9.f/5) + 32) * 10));
+    int tempFtens = (tempFf/100);
+    int tempFones = ((tempFf - tempFtens)/10);
+    int tempFtenths = (tempFf - tempFtens - tempFones);
+
+    tempC[0] = 'T';
+    tempC[1] = 'e';
+    tempC[2] = 'm';
+    tempC[3] = 'p';
+    tempC[4] = '(';
+    tempC[5] = 'C';
+    tempC[6] = ')';
+    tempC[7] = '=';
+    tempC[8] = '>';
+    tempC[9] = (tempCtens + 48);
+    tempC[10] = (tempCones + 48);
+    tempC[11] = '.';
+    tempC[12] = (tempCtenths + 48);
+    tempC[13] ='C';
+
+    tempF[0] = 'T';
+    tempF[1] = 'e';
+    tempF[2] = 'm';
+    tempF[3] = 'p';
+    tempF[4] = '(';
+    tempF[5] = 'F';
+    tempF[6] = ')';
+    tempF[7] = '=';
+    tempF[8] = '>';
+    tempF[9] = (tempFtens + 48);
+    tempF[10] = (tempFones + 48);
+    tempF[11] = '.';
+    tempF[12] = (tempFtenths + 48);
+    tempF[13] ='F';
+
+    Graphics_drawStringCentered(&g_sContext, tempC, AUTO_STRING_LENGTH, 48, 15, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, tempF, AUTO_STRING_LENGTH, 48, 20, TRANSPARENT_TEXT);
+}
+
 
 
 
