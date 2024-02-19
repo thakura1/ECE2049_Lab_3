@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include "peripherals.h"
 
+#define CALADC12_15V_30C  *((unsigned int *)0x1A1A)
+#define CALADC12_15V_85C  *((unsigned int *)0x1A1C)
+
 long unsigned int timer_cnt=0;
 long unsigned int prev_time=0;
 char tdir = 1;

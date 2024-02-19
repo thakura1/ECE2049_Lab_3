@@ -42,7 +42,7 @@
  * for an API functional library-approach to peripheral configuration.
  *
  * --/COPYRIGHT--*/
-
+/***
 #include <msp430.h>
 
 
@@ -87,5 +87,5 @@ int main(void)
     __no_operation();                       // SET BREAKPOINT HERE
   }
 }
-
+***/
 
