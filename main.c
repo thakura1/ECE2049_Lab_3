@@ -32,7 +32,16 @@ typedef enum {
     EDIT_SEC = 5,
 } GAME_STATE;
 
+
+volatile float temperatureDegC;
+volatile float temperatureDegF;
+volatile float degC_per_bit;
+volatile unsigned int bits30, bits85;
+int scrollWheel;
+
 int main(void) {
+    uint32_t temp0,temp1,temp2;
+    float tempDegC0,tempDegC1,tempDegC2;
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
     _BIS_SR(GIE); //enables interrupts
     runtimerA2(); //start timer
@@ -40,10 +49,25 @@ int main(void) {
     configDisplay();
     configKeypad();
     configUserButtons();
+    //configADC();
 
     unsigned char currKey = getKey();
     uint8_t currButton = 0;
     unsigned char currKeyint = getKey();
+
+    degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
+    P8SEL &= ~BIT0;
+    P8DIR |= BIT0;
+    P8OUT |= BIT0;
+    REFCTL0 &= ~REFMSTR;                      // Reset REFMSTR to hand over control of
+    ADC12CTL0 = ADC12SHT0_9 | ADC12SHT1_9 | ADC12REFON | ADC12ON | ADC12MSC;     // Internal ref = 1.5V
+    ADC12CTL1 = ADC12SHP | ADC12CONSEQ_1;                     // Enable sample timer
+    ADC12MCTL0 = ADC12SREF_1 + ADC12INCH_10;  // ADC i/p ch A10 = temp sense
+    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_5;   // ADC12INCH5 = Scroll wheel = A5
+     __delay_cycles(100);                    // delay to allow Ref to settle
+     ADC12CTL0 |= ADC12ENC;              // Enable conversion
+     bits30 = CALADC12_15V_30C;
+     bits85 = CALADC12_15V_85C;
 
 
     GAME_STATE my_state = EDIT_MONTH;
@@ -53,35 +77,33 @@ int main(void) {
         char currKeyint = getKey();
         switch(my_state){
             case UPDATE: //display Welcome Screen
-                uint32_t temp0,temp1,temp2;
-                float tempDegC0,tempDegC1,tempDegC2;
-                REFCTL0&=~REFMSTR;
 
-                 //multiplechannels,use2.5Vinternalreferencevoltage
-                ADC12CTL0=ADC12SHT0_9+ADC12SHT1_9+ADC12REF2_5+ADC12REFON+ADC12ON+ADC12MSC;
-                ADC12CTL1=ADC12SHP|ADC12CONSEQ_1;
-                ADC12MCTL0=ADC12SREF_1+ADC12INCH_2;
-                ADC12MCTL1=ADC12SREF_1+ADC12INCH_3;
-                ADC12MCTL2=ADC12SREF_1+ADC12INCH_7+ADC12EOS;
+/***
+                ADC12CTL0 |= ADC12ENC;              // Enable conversion
 
-                 //configurefunctionalmode
-                P6SEL |=(BIT2|BIT3|BIT7);
-                ADC12CTL0&=~ADC12SC;
-                while(1){
-                    if(sample_flag){//if 0.1shasoccurred
-                        sample_flag=false;
-                        ADC12CTL0&=~ADC12SC;//clearthestartbit
-                        ADC12CTL0|=ADC12SC+ADC12ENC;
-                        while(ADC12CTL1&ADC12BUSY)
-                            __no_operation();
-                        temp0=ADC12MEM0&0x0FFF;
-                        temp1=ADC12MEM1&0x0FFF;
-                        temp2=ADC12MEM2&0x0FFF;
-                        tempDegC0=((temp0*2.5)/4096-1.65)/0.00650;
-                        tempDegC1=((temp1*2.5)/4096-1.65)/0.00650;
-                        tempDegC2=((temp2*2.5)/4096-1.65)/0.00650;
-                    }
-                }
+                ADC12CTL0 &= ~ADC12SC;  // clear the start bit
+                ADC12CTL0 |= ADC12SC;       // Sampling and conversion start
+                                        // Single conversion (single channel)
+
+                    // Poll busy bit waiting for conversion to complete
+                    while (ADC12CTL1 & ADC12BUSY)
+                        __no_operation();
+
+                    int in_temp = ADC12MEM0;      // Read in results if conversion
+
+                    // Temperature in Celsius. See the Device Descriptor Table section in the
+                    // System Resets, Interrupts, and Operating Modes, System Control Module
+                    // chapter in the device user's guide for background information on the
+                    // used formula.
+                    temperatureDegC = (float)((long)in_temp - CALADC12_15V_30C) * degC_per_bit +30.0;
+
+                    // Temperature in Fahrenheit Tf = (9/5)*Tc + 32
+                    temperatureDegF = temperatureDegC * 9.0/5.0 + 32.0;
+
+                    scrollWheel = ADC12MEM1;               // Read results if conversion done
+
+                    __no_operation();                       // SET BREAKPOINT HERE
+***/
                 break;
             case EDIT_MONTH: //counts down
                  break;
@@ -357,4 +379,42 @@ void displayTemp(float inAvgTempC)
 
 
 
+void configADC(){
+    // Use calibration data stored in info memory
+//    bits30 = CALADC12_15V_30C;
+//    bits85 = CALADC12_15V_85C;
+//    degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
+//
+//
+//    //configure scroll wheel pins
+//    P8SEL &= ~BIT0;
+//    P8DIR |= BIT0;
+//    P8OUT |= BIT0;
+//
+//    REFCTL0 &= ~REFMSTR;                      // Reset REFMSTR to hand over control of
+//                                              // internal reference voltages to
+//    // ADC12_A control registers
+//
+//
+//    //temp sensor configs
+//    ADC12CTL0 = ADC12SHT0_9 | ADC12REFON | ADC12ON | ADC12MSC;     // Internal ref = 1.5V
+//    //sample and hold every 385 cycles //turns ADC on
+//
+//    ADC12CTL1 = ADC12SHP | ADC12CONSEQ_1;                     // Enable sample timer
+//
+//
+//
+//     // Using ADC12MEM0 to store  temprature reading
+//    ADC12MCTL0 = ADC12SREF_1 + ADC12INCH_10;  // ADC i/p ch A10 = temp sense
+//                                           // ACD12SREF_1 = internal ref = 1.5v
+//
+//
+//    //using ADC12MCTL1 to store scroll wheel
+//    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_5;   // ADC12INCH5 = Scroll wheel = A5
+//                          // ACD12SREF_0 = Vref+ = Vcc = 3.3v
+//
+//
+//     __delay_cycles(100);                    // delay to allow Ref to settle
+//     ADC12CTL0 |= ADC12ENC;              // Enable conversion
 
+}
