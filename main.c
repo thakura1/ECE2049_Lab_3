@@ -17,14 +17,17 @@ int SongNote = 0;
 uint8_t led;
 int flag = 0;
 
+//function headers
 void runtimerA2(void);
 void stoptimerA2(int reset);
 __interrupt void TimerA2_ISR (void);
-//void updateLCD(char currentDisplay[], char string[]);
-
 void configUserLED(char inbits);
 void configUserButtons(void);
 uint8_t getState(void); //uint8_t
+void displayTime(long unsigned int inTime);
+void displayTemp(float inAvgTempC);
+
+
 
 typedef enum {
     UPDATE = 0,
@@ -33,6 +36,7 @@ typedef enum {
     EDIT_HOURS = 3,
     EDIT_MINS = 4,
     EDIT_SEC = 5,
+
 } GAME_STATE;
 
 
@@ -48,7 +52,6 @@ int main(void) {
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
     _BIS_SR(GIE); //enables interrupts
     runtimerA2(); //start timer
-
     configDisplay();
     configKeypad();
     configUserButtons();
@@ -59,6 +62,7 @@ int main(void) {
     unsigned char currKeyint = getKey();
 
     degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
+
     P8SEL &= ~BIT0;
     P8DIR |= BIT0;
     P8OUT |= BIT0;
@@ -66,22 +70,30 @@ int main(void) {
     ADC12CTL0 = ADC12SHT0_9 | ADC12SHT1_9 | ADC12REFON | ADC12ON | ADC12MSC;     // Internal ref = 1.5V
     ADC12CTL1 = ADC12SHP | ADC12CONSEQ_1;                     // Enable sample timer
     ADC12MCTL0 = ADC12SREF_1 + ADC12INCH_10;  // ADC i/p ch A10 = temp sense
-    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_5;   // ADC12INCH5 = Scroll wheel = A5
+    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_5 + ADC12EOS;   // ADC12INCH5 = Scroll wheel = A5
      __delay_cycles(100);                    // delay to allow Ref to settle
      ADC12CTL0 |= ADC12ENC;              // Enable conversion
      bits30 = CALADC12_15V_30C;
      bits85 = CALADC12_15V_85C;
 
 
-    GAME_STATE my_state = EDIT_MONTH;
+    GAME_STATE my_state = UPDATE;
     while(1){
         currKey = getKey();
-
         char currKeyint = getKey();
+        currButton == getState();
+        if((timer_cnt - prev_time) >= 1){
+            //Graphics_clearDisplay(&g_sContext);
+            my_state = UPDATE;
+        }
+
+        else if(currButton == BIT3)
+        {
+            my_state = EDIT_MONTH;
+        }
+
         switch(my_state){
             case UPDATE: //display Welcome Screen
-
-/***
                 ADC12CTL0 |= ADC12ENC;              // Enable conversion
 
                 ADC12CTL0 &= ~ADC12SC;  // clear the start bit
@@ -101,15 +113,20 @@ int main(void) {
                     temperatureDegC = (float)((long)in_temp - CALADC12_15V_30C) * degC_per_bit +30.0;
 
                     // Temperature in Fahrenheit Tf = (9/5)*Tc + 32
-                    temperatureDegF = temperatureDegC * 9.0/5.0 + 32.0;
+                    //temperatureDegF = temperatureDegC * 9.0/5.0 + 32.0;
+                    displayTemp(temperatureDegC);
+                    displayTime(timer_cnt);
+                    Graphics_flushBuffer(&g_sContext);
+                    //scrollWheel = ADC12MEM1;               // Read results if conversion done
 
-                    scrollWheel = ADC12MEM1;               // Read results if conversion done
-
-                    __no_operation();                       // SET BREAKPOINT HERE
-***/
+                    //__no_operation();                       // SET BREAKPOINT HERE
+                    prev_time = timer_cnt;
                 break;
             case EDIT_MONTH: //counts down
-                 break;
+                //int daysADC = scrollWheel; //do something to map ADC to days so you add to time
+
+
+                break;
             case EDIT_DAY:
                 break;
             case  EDIT_HOURS:
@@ -142,6 +159,7 @@ void stoptimerA2(int reset)
 __interrupt void TimerA2_ISR (void){
     if(tdir){
         timer_cnt++;
+        scrollWheel = ADC12MEM1;
     }
     else
         timer_cnt--;
@@ -182,7 +200,6 @@ uint8_t getState(void){
 
         return result;
 }
-
 
 void displayTime(long unsigned int inTime)
 {
@@ -326,8 +343,8 @@ void displayTime(long unsigned int inTime)
     time[12] = ((seconds/10) + 48);
     time[13] = ((seconds%10) + 48);
 
-    Graphics_drawStringCentered(&g_sContext, time, AUTO_STRING_LENGTH, 48, 15, TRANSPARENT_TEXT);
-    Graphics_drawStringCentered(&g_sContext, date, AUTO_STRING_LENGTH, 48, 20, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, time, 14, 48, 35, OPAQUE_TEXT);
+    Graphics_drawStringCentered(&g_sContext, date, 13, 48, 45, OPAQUE_TEXT);
 }
 
 void displayTemp(float inAvgTempC)
@@ -376,11 +393,9 @@ void displayTemp(float inAvgTempC)
     tempF[12] = (tempFtenths + 48);
     tempF[13] ='F';
 
-    Graphics_drawStringCentered(&g_sContext, tempC, AUTO_STRING_LENGTH, 48, 15, TRANSPARENT_TEXT);
-    Graphics_drawStringCentered(&g_sContext, tempF, AUTO_STRING_LENGTH, 48, 20, TRANSPARENT_TEXT);
+    Graphics_drawStringCentered(&g_sContext, tempC, 14, 48, 15, OPAQUE_TEXT);
+    Graphics_drawStringCentered(&g_sContext, tempF, 14, 48, 25, OPAQUE_TEXT);
 }
-
-
 
 void configADC(){
     // Use calibration data stored in info memory
