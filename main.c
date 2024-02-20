@@ -10,12 +10,13 @@
 #define CALADC12_15V_30C  *((unsigned int *)0x1A1A)
 #define CALADC12_15V_85C  *((unsigned int *)0x1A1C)
 
-long unsigned int timer_cnt=0;
+long unsigned int timer_cnt= 0; //2764800 --> Feb 1
 long unsigned int prev_time=0;
 char tdir = 1;
 int SongNote = 0;
 uint8_t led;
 int flag = 0;
+int daysInMonth;
 
 //function headers
 void runtimerA2(void);
@@ -26,7 +27,6 @@ void configUserButtons(void);
 uint8_t getState(void); //uint8_t
 void displayTime(long unsigned int inTime);
 void displayTemp(float inAvgTempC);
-
 
 
 typedef enum {
@@ -60,8 +60,9 @@ int main(void) {
     unsigned char currKey = getKey();
     uint8_t currButton = 0;
     unsigned char currKeyint = getKey();
+    int monthsADC;
 
-    degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
+    //degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
 
 //    P8SEL &= ~BIT0;
 //    P8DIR |= BIT0;
@@ -74,17 +75,18 @@ int main(void) {
     ADC12CTL1 = ADC12SHP | ADC12CONSEQ_1;                     // Enable sample timer
     ADC12MCTL0 = ADC12SREF_1 + ADC12INCH_10;  // ADC i/p ch A10 = temp sense
     ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_0 + ADC12EOS;   // ADC12INCH0 = Scroll wheel = A0
-     __delay_cycles(100);                    // delay to allow Ref to settle
-     ADC12CTL0 |= ADC12ENC;              // Enable conversion
-     bits30 = CALADC12_15V_30C;
-     bits85 = CALADC12_15V_85C;
+    __delay_cycles(100);                    // delay to allow Ref to settle
+    ADC12CTL0 |= ADC12ENC;              // Enable conversion
+    bits30 = CALADC12_15V_30C;
+    bits85 = CALADC12_15V_85C;
+    degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
 
 
     GAME_STATE my_state = UPDATE;
     while(1){
         currKey = getKey();
         char currKeyint = getKey();
-        currButton == getState();
+        currButton |= getState();
         if((timer_cnt - prev_time) >= 1){
             //Graphics_clearDisplay(&g_sContext);
             my_state = UPDATE;
@@ -94,7 +96,7 @@ int main(void) {
         {
             my_state = EDIT_MONTH;
         }
-
+        currButton = 0;
         switch(my_state){
             case UPDATE: //display Welcome Screen
                 ADC12CTL0 |= ADC12ENC;              // Enable conversion
@@ -126,7 +128,59 @@ int main(void) {
                     prev_time = timer_cnt;
                 break;
             case EDIT_MONTH: //counts down
-                //int daysADC = scrollWheel; //do something to map ADC to days so you add to time
+                monthsADC = (scrollWheel/4096)*12; //do something to map ADC to days so you add to time
+
+//                if (monthsADC = 12)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 11)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 10)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 9)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 8)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 7)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 6)
+//                {
+//                    timer_cnt += 151*86400;
+//                }
+//                else if (monthsADC = 5)
+//                {
+//                    timer_cnt += 120*86400;
+//                }
+//                else if (monthsADC = 4)
+//                {
+//                    timer_cnt += 90*86400;
+//                }
+//                else if (monthsADC = 3)
+//                {
+//                    timer_cnt += 59*86400;
+//                }
+//                else if (monthsADC = 2)
+//                {
+//                    timer_cnt += 31*86400;
+//                }
+//                else if (monthsADC = 1)
+//                {
+//                    timer_cnt += 0;
+//                }
+//                else{
+//                    timer_cnt += 0;
+//                }
                 break;
             case EDIT_DAY:
                 break;
@@ -222,6 +276,7 @@ void displayTime(long unsigned int inTime)
 
     if(days <= 31)
     {
+        daysInMonth = 31;
         date[6] = 'J';
         date[7] = 'A';
         date[8] = 'N';
@@ -231,6 +286,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 31)&&(days <= 59))
     {
+        daysInMonth = 28;
         date[6] = 'F';
         date[7] = 'E';
         date[8] = 'B';
@@ -240,6 +296,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 59)&&(days <= 90))
     {
+        daysInMonth = 31;
         date[6] = 'M';
         date[7] = 'A';
         date[8] = 'R';
@@ -249,6 +306,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 90)&&(days <= 120))
     {
+        daysInMonth = 30;
         date[6] = 'A';
         date[7] = 'P';
         date[8] = 'R';
@@ -258,6 +316,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 120)&&(days <= 151))
     {
+        daysInMonth = 31;
         date[6] = 'M';
         date[7] = 'A';
         date[8] = 'Y';
@@ -267,6 +326,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 151)&&(days <= 181))
     {
+        daysInMonth = 30;
         date[6] = 'J';
         date[7] = 'U';
         date[8] = 'N';
@@ -276,6 +336,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 181)&&(days <= 212))
     {
+        daysInMonth = 31;
         date[6] = 'J';
         date[7] = 'U';
         date[8] = 'L';
@@ -285,6 +346,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 212)&&(days <= 243))
     {
+        daysInMonth = 31;
         date[6] = 'A';
         date[7] = 'U';
         date[8] = 'G';
@@ -294,6 +356,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 243)&&(days <= 273))
     {
+        daysInMonth = 30;
         date[6] = 'S';
         date[7] = 'E';
         date[8] = 'P';
@@ -303,6 +366,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 273)&&(days <= 304))
     {
+        daysInMonth = 31;
         date[6] = 'O';
         date[7] = 'C';
         date[8] = 'T';
@@ -312,6 +376,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 304)&&(days <= 334))
     {
+        daysInMonth = 30;
         date[6] = 'N';
         date[7] = 'O';
         date[8] = 'V';
@@ -321,6 +386,7 @@ void displayTime(long unsigned int inTime)
     }
     else if ((days > 334)&&(days <= 365))
     {
+        daysInMonth = 31;
         date[6] = 'D';
         date[7] = 'E';
         date[8] = 'C';
@@ -354,15 +420,15 @@ void displayTemp(float inAvgTempC)
     char tempF[14];
 
     //multiplied by 10
-    float tempCf = (floor (inAvgTempC* 10));
+    int tempCf = inAvgTempC*10;
     int tempCtens = (tempCf/100);
-    int tempCones = ((tempCf - tempCtens)/10);
-    int tempCtenths = (tempCf - tempCtens - tempCones);
+    int tempCones = ((tempCf - (tempCtens*100))/10);
+    int tempCtenths = (tempCf - (tempCtens*100) - (tempCones*10));
 
-    float tempFf = (floor ((inAvgTempC * (9.f/5) + 32) * 10));
+    float tempFf = (inAvgTempC * (9.f/5) + 32) * 10;
     int tempFtens = (tempFf/100);
-    int tempFones = ((tempFf - tempFtens)/10);
-    int tempFtenths = (tempFf - tempFtens - tempFones);
+    int tempFones = ((tempFf - (tempFtens*100))/10);
+    int tempFtenths = (tempFf - (tempFtens*100) - (tempFones*10));
 
     tempC[0] = 'T';
     tempC[1] = 'e';

@@ -78,7 +78,7 @@
 //   Built with IAR Embedded Workbench Version: 5.51.1 & Code Composer Studio V5.2.1
 //******************************************************************************
 
-/***
+/*
 #include <msp430.h>
 
 // Temperature Sensor Calibration = Reading at 30 degrees C is stored at addr 1A1Ah
@@ -142,4 +142,4 @@ int main(void)
     __no_operation();                       // SET BREAKPOINT HERE
   }
 }
-***/
+//***/
