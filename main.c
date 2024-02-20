@@ -63,14 +63,17 @@ int main(void) {
 
     degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
 
-    P8SEL &= ~BIT0;
-    P8DIR |= BIT0;
-    P8OUT |= BIT0;
+//    P8SEL &= ~BIT0;
+//    P8DIR |= BIT0;
+//    P8OUT |= BIT0;
+    P6SEL &= ~BIT0;
+    P6DIR |= BIT0;
+
     REFCTL0 &= ~REFMSTR;                      // Reset REFMSTR to hand over control of
     ADC12CTL0 = ADC12SHT0_9 | ADC12SHT1_9 | ADC12REFON | ADC12ON | ADC12MSC;     // Internal ref = 1.5V
     ADC12CTL1 = ADC12SHP | ADC12CONSEQ_1;                     // Enable sample timer
     ADC12MCTL0 = ADC12SREF_1 + ADC12INCH_10;  // ADC i/p ch A10 = temp sense
-    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_5 + ADC12EOS;   // ADC12INCH5 = Scroll wheel = A5
+    ADC12MCTL1 = ADC12SREF_0 + ADC12INCH_0 + ADC12EOS;   // ADC12INCH0 = Scroll wheel = A0
      __delay_cycles(100);                    // delay to allow Ref to settle
      ADC12CTL0 |= ADC12ENC;              // Enable conversion
      bits30 = CALADC12_15V_30C;
@@ -124,8 +127,6 @@ int main(void) {
                 break;
             case EDIT_MONTH: //counts down
                 //int daysADC = scrollWheel; //do something to map ADC to days so you add to time
-
-
                 break;
             case EDIT_DAY:
                 break;
