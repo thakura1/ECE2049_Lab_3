@@ -10,7 +10,8 @@
 #define CALADC12_15V_30C  *((unsigned int *)0x1A1A)
 #define CALADC12_15V_85C  *((unsigned int *)0x1A1C)
 
-long unsigned int timer_cnt= 0; //2764800 --> Feb 1
+long unsigned int timer_cnt = 0; //2764800 --> Feb 1
+long unsigned int timer_copy = 0;
 long unsigned int prev_time=0;
 char tdir = 1;
 int SongNote = 0;
@@ -47,8 +48,8 @@ volatile unsigned int bits30, bits85;
 int scrollWheel;
 
 int main(void) {
-    uint32_t temp0,temp1,temp2;
-    float tempDegC0,tempDegC1,tempDegC2;
+//    uint32_t temp0,temp1,temp2;
+//    float tempDegC0,tempDegC1,tempDegC2;
     WDTCTL = WDTPW | WDTHOLD; // Stop watchdog timer
     _BIS_SR(GIE); //enables interrupts
     runtimerA2(); //start timer
@@ -61,6 +62,7 @@ int main(void) {
     uint8_t currButton = 0;
     unsigned char currKeyint = getKey();
     int monthsADC;
+    float temps[30] = {0};
 
     //degC_per_bit = ((float)(85.0 - 30.0))/((float)(bits85-bits30));
 
@@ -119,8 +121,19 @@ int main(void) {
 
                     // Temperature in Fahrenheit Tf = (9/5)*Tc + 32
                     //temperatureDegF = temperatureDegC * 9.0/5.0 + 32.0;
-                    displayTemp(temperatureDegC);
-                    displayTime(timer_cnt);
+                    temps[timer_cnt % 30] = temperatureDegC;
+                    if(timer_cnt >= 30)
+                    {
+                        float sum = 0;
+                        int i;
+                        for(i = 0; i < 30; i++){
+                            sum += temps[i];
+                        }
+                        displayTemp(sum/30);
+                    }else{
+                        displayTemp(temperatureDegC);
+                    }
+                    displayTime(timer_copy);
                     Graphics_flushBuffer(&g_sContext);
                     //scrollWheel = ADC12MEM1;               // Read results if conversion done
 
@@ -132,54 +145,54 @@ int main(void) {
 
 //                if (monthsADC = 12)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 11)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_ccopy += 59*86400;
 //                }
 //                else if (monthsADC = 10)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 9)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 8)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 7)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 6)
 //                {
-//                    timer_cnt += 151*86400;
+//                    timer_copy += 151*86400;
 //                }
 //                else if (monthsADC = 5)
 //                {
-//                    timer_cnt += 120*86400;
+//                    timer_copy += 120*86400;
 //                }
 //                else if (monthsADC = 4)
 //                {
-//                    timer_cnt += 90*86400;
+//                    timer_copy += 90*86400;
 //                }
 //                else if (monthsADC = 3)
 //                {
-//                    timer_cnt += 59*86400;
+//                    timer_copy += 59*86400;
 //                }
 //                else if (monthsADC = 2)
 //                {
-//                    timer_cnt += 31*86400;
+//                    timer_copy += 31*86400;
 //                }
 //                else if (monthsADC = 1)
 //                {
-//                    timer_cnt += 0;
+//                    timer_copy += 0;
 //                }
 //                else{
-//                    timer_cnt += 0;
+//                    timer_copy += 0;
 //                }
                 break;
             case EDIT_DAY:
@@ -206,7 +219,10 @@ void stoptimerA2(int reset)
     TA2CTL = MC_0; // stop timer
     TA2CCTL0 &= ~CCIE; // TA2CCR0 interrupt disabled
         if(reset)
-            timer_cnt=0;
+        {
+            timer_cnt = 0;
+            timer_copy = 0;
+        }
 }
 
 // Timer A2 interrupt service routine
@@ -214,10 +230,13 @@ void stoptimerA2(int reset)
 __interrupt void TimerA2_ISR (void){
     if(tdir){
         timer_cnt++;
+        timer_copy++;
         scrollWheel = ADC12MEM1;
     }
-    else
+    else{
         timer_cnt--;
+        timer_copy--;
+    }
 }
 
 void configUserButtons(void){
