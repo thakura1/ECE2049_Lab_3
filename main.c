@@ -10,14 +10,29 @@
 #define CALADC12_15V_30C  *((unsigned int *)0x1A1A)
 #define CALADC12_15V_85C  *((unsigned int *)0x1A1C)
 
-long unsigned int timer_cnt = 0; //2764800 --> Feb 1
-long unsigned int timer_copy = 0;
+long unsigned int timer_cnt = 86400; //2764800 --> Feb 1
+long unsigned int timer_copy = 86400;
+
 long unsigned int prev_time=0;
 char tdir = 1;
 int SongNote = 0;
 uint8_t led;
 int flag = 0;
 int daysInMonth;
+int months;
+int days;
+int hours;
+int minutes;
+int seconds;
+int daysInMonthArr[13] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+
+volatile float temperatureDegC;
+volatile float temperatureDegF;
+volatile float degC_per_bit;
+volatile unsigned int bits30, bits85;
+int scrollWheel;
+
 
 //function headers
 void runtimerA2(void);
@@ -41,11 +56,7 @@ typedef enum {
 } GAME_STATE;
 
 
-volatile float temperatureDegC;
-volatile float temperatureDegF;
-volatile float degC_per_bit;
-volatile unsigned int bits30, bits85;
-int scrollWheel;
+
 
 int main(void) {
 //    uint32_t temp0,temp1,temp2;
@@ -86,20 +97,40 @@ int main(void) {
 
     GAME_STATE my_state = UPDATE;
     while(1){
+        int monthsADC;
+        int daysADC;
+        int hoursADC;
+        int minutesADC;
+        int secondsADC;
+
         currKey = getKey();
         char currKeyint = getKey();
         currButton |= getState();
-        if((timer_cnt - prev_time) >= 1){
-            //Graphics_clearDisplay(&g_sContext);
-            my_state = UPDATE;
-        }
+//        if((timer_cnt - prev_time) >= 1){
+//            //Graphics_clearDisplay(&g_sContext);
+//            my_state = UPDATE;
+//        }
 
-        else if(currButton == BIT3)
+        if(currButton == BIT3)
         {
             my_state = EDIT_MONTH;
+            updateCurrentDate(timer_cnt);
+            //currButton = 0;
         }
         currButton = 0;
+        ADC12CTL0 |= ADC12ENC;              // Enable conversion
+
+        ADC12CTL0 &= ~ADC12SC;  // clear the start bit
+        ADC12CTL0 |= ADC12SC;       // Sampling and conversion start
+                                // Single conversion (single channel)
+
+        // Poll busy bit waiting for conversion to complete
+        while (ADC12CTL1 & ADC12BUSY)
+            __no_operation();
+
+        scrollWheel = ADC12MEM1;
         switch(my_state){
+//        Graphics_flushBuffer(&g_sContext);
             case UPDATE: //display Welcome Screen
                 ADC12CTL0 |= ADC12ENC;              // Enable conversion
 
@@ -141,69 +172,72 @@ int main(void) {
                     prev_time = timer_cnt;
                 break;
             case EDIT_MONTH: //counts down
-                monthsADC = (scrollWheel/4096)*12; //do something to map ADC to days so you add to time
+                monthsADC = ((float)scrollWheel/(float)4096)*(float)12+(float)1; //do something to map ADC to days so you add to time
+                months = monthsADC;
+                //long unsigned int idefk = dateToSeconds();
+                int daysFromMonth = monthIntervalToDays(months);
+                long unsigned int totalDays = daysFromMonth + days;
+                long unsigned int totalHours = hours + (totalDays * 24);
+                long unsigned int totalMinutes = minutes + (totalHours * 60);
+                long unsigned int totalSeconds = seconds + (totalMinutes * 60);
 
-//                if (monthsADC = 12)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 11)
-//                {
-//                    timer_ccopy += 59*86400;
-//                }
-//                else if (monthsADC = 10)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 9)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 8)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 7)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 6)
-//                {
-//                    timer_copy += 151*86400;
-//                }
-//                else if (monthsADC = 5)
-//                {
-//                    timer_copy += 120*86400;
-//                }
-//                else if (monthsADC = 4)
-//                {
-//                    timer_copy += 90*86400;
-//                }
-//                else if (monthsADC = 3)
-//                {
-//                    timer_copy += 59*86400;
-//                }
-//                else if (monthsADC = 2)
-//                {
-//                    timer_copy += 31*86400;
-//                }
-//                else if (monthsADC = 1)
-//                {
-//                    timer_copy += 0;
-//                }
-//                else{
-//                    timer_copy += 0;
-//                }
+                currButton |= getState();
+                if(currButton == BIT3)
+                {
+                    my_state = EDIT_DAY;
+                    updateCurrentDate(timer_cnt);
+                }
+                displayTime(totalSeconds);
+                Graphics_flushBuffer(&g_sContext);
                 break;
             case EDIT_DAY:
+                daysADC = ((float)scrollWheel/(float)4096)*(float)daysInMonth; //do something to map ADC to days so you add to time
+                days = daysADC;
+
+                displayTime(dateToSeconds());
+                if(currButton == BIT3)
+                {
+                    my_state = EDIT_DAY;
+                    updateCurrentDate(timer_cnt);
+                }
+                Graphics_flushBuffer(&g_sContext);
                 break;
             case  EDIT_HOURS:
+                hoursADC = ((float)scrollWheel/(float)4096)*(float)24; //do something to map ADC to days so you add to time
+                hours = hoursADC;
+                displayTime(dateToSeconds());
+                if(currButton == BIT3)
+                {
+                    my_state = EDIT_DAY;
+                    updateCurrentDate(timer_cnt);
+                }
+                Graphics_flushBuffer(&g_sContext);
                 break;
             case EDIT_MINS:
+                minutesADC = ((float)scrollWheel/(float)4096)*(float)60; //do something to map ADC to days so you add to time
+                minutes = minutesADC;
+                displayTime(dateToSeconds());
+                if(currButton == BIT3)
+                {
+                    my_state = EDIT_DAY;
+                    updateCurrentDate(timer_cnt);
+                }
+                Graphics_flushBuffer(&g_sContext);
                 break;
             case EDIT_SEC:
+                secondsADC = ((float)scrollWheel/(float)4096)*(float)60; //do something to map ADC to days so you add to time
+                seconds = secondsADC;
+                displayTime(dateToSeconds());
+                if(currButton == BIT3)
+                {
+                    my_state = EDIT_DAY;
+                    updateCurrentDate(timer_cnt);
+                }
+                Graphics_flushBuffer(&g_sContext);
                 break;
         }
+
+    currButton = 0;
     }
 }
 
@@ -273,6 +307,38 @@ uint8_t getState(void){
         }
 
         return result;
+}
+
+void updateCurrentDate(long unsigned int inTime)
+{
+    days = ((inTime / 86400)%365); //86400 sec in a day
+    hours = ((inTime - (86400*days)) / 3600); //3600 sec in an hour
+    minutes = ((inTime - (86400*days) - (3600*hours)) / 60); //60 sec in a min
+    seconds = (inTime - (86400*days) - (3600*hours) - (60*minutes)); //remainder
+    int month;
+    for(month = 1; days > daysInMonth; month++){
+        days = days - daysInMonth;
+    }
+}
+
+long unsigned int dateToSeconds(){
+    int daysFromMonth = monthIntervalToDays(months);
+    long unsigned int totalDays = daysFromMonth + days;
+    long unsigned int totalHours = hours + (totalDays * 24);
+    long unsigned int totalMinutes = minutes + (totalHours * 60);
+    long unsigned int totalSeconds = seconds + (totalMinutes * 60);
+    return totalSeconds;
+
+}
+
+int monthIntervalToDays(int startMonth){
+    int monthinDays = 0;
+    int i;
+    for(i = startMonth; i > 1; i--){
+        monthinDays = monthinDays + daysInMonthArr[i];
+    }
+    return monthinDays;
+
 }
 
 void displayTime(long unsigned int inTime)
